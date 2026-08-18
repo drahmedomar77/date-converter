@@ -24,40 +24,31 @@ jobs:
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev
         pip install --upgrade buildozer cython
 
-    - name: Configure buildozer.spec and Build APK
+    - name: Configure buildozer.spec and Licenses
       run: |
-        # 1. قبول كافة تراخيص Android SDK المدمجة في الخادم
+        # 1. قبول تراخيص Android SDK بالكامل
+        mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        if [ -d "$ANDROID_HOME/licenses" ]; then
+          cp -r $ANDROID_HOME/licenses/* ~/.buildozer/android/platform/android-sdk/licenses/
+        fi
 
-        # 2. ربط Buildozer بـ SDK الخادم المدمج تلقائياً
+        # 2. ضبط buildozer.spec لاستخدام إصدار مستقر 34.0.0 وتفعيل قبول التراخيص
         python3 -c "
+        import re
         with open('buildozer.spec', 'r') as f:
-            lines = f.readlines()
+            content = f.read()
 
-        new_lines = []
-        has_sdk, has_lic = False, False
-
-        for line in lines:
-            s = line.strip()
-            if s.startswith(('android.sdk_path', '#android.sdk_path', '# android.sdk_path')):
-                new_lines.append('android.sdk_path = /usr/local/lib/android/sdk\n')
-                has_sdk = True
-            elif s.startswith(('android.accept_sdk_license', '#android.accept_sdk_license', '# android.accept_sdk_license')):
-                new_lines.append('android.accept_sdk_license = True\n')
-                has_lic = True
-            else:
-                new_lines.append(line)
-
-        if not has_sdk:
-            new_lines.append('android.sdk_path = /usr/local/lib/android/sdk\n')
-        if not has_lic:
-            new_lines.append('android.accept_sdk_license = True\n')
+        content = re.sub(r'#?\s*android\.accept_sdk_license\s*=.*', 'android.accept_sdk_license = True', content)
+        content = re.sub(r'#?\s*android\.build_tools_version\s*=.*', 'android.build_tools_version = 34.0.0', content)
+        content = re.sub(r'#?\s*android\.api\s*=.*', 'android.api = 33', content)
 
         with open('buildozer.spec', 'w') as f:
-            f.writelines(new_lines)
+            f.write(content)
         "
 
-        # 3. بدء عملية بناء الـ APK
+    - name: Build APK
+      run: |
         buildozer -v android debug
 
     - name: Upload APK Artifact
