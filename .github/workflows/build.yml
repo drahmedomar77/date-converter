@@ -24,18 +24,40 @@ jobs:
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev
         pip install --upgrade buildozer cython
 
-    - name: Pre-accept Android SDK Licenses & Build APK
+    - name: Configure buildozer.spec and Build APK
       run: |
-        # إنشاء مجلد التراخيص لـ Buildozer ونقل التراخيص المقبولة جاهزاً من خادم GitHub
-        mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
-        if [ -d "$ANDROID_HOME/licenses" ]; then
-          cp -r $ANDROID_HOME/licenses/* ~/.buildozer/android/platform/android-sdk/licenses/
-        fi
-
-        # قبول كلي إضافي للتراخيص عبر sdkmanager
+        # 1. قبول كافة تراخيص Android SDK المدمجة في الخادم
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-        # تشغيل البناء الفعلي مع إظهار تفاصيل السجل
+        # 2. ربط Buildozer بـ SDK الخادم المدمج تلقائياً
+        python3 -c "
+        with open('buildozer.spec', 'r') as f:
+            lines = f.readlines()
+
+        new_lines = []
+        has_sdk, has_lic = False, False
+
+        for line in lines:
+            s = line.strip()
+            if s.startswith(('android.sdk_path', '#android.sdk_path', '# android.sdk_path')):
+                new_lines.append('android.sdk_path = /usr/local/lib/android/sdk\n')
+                has_sdk = True
+            elif s.startswith(('android.accept_sdk_license', '#android.accept_sdk_license', '# android.accept_sdk_license')):
+                new_lines.append('android.accept_sdk_license = True\n')
+                has_lic = True
+            else:
+                new_lines.append(line)
+
+        if not has_sdk:
+            new_lines.append('android.sdk_path = /usr/local/lib/android/sdk\n')
+        if not has_lic:
+            new_lines.append('android.accept_sdk_license = True\n')
+
+        with open('buildozer.spec', 'w') as f:
+            f.writelines(new_lines)
+        "
+
+        # 3. بدء عملية بناء الـ APK
         buildozer -v android debug
 
     - name: Upload APK Artifact
@@ -43,4 +65,3 @@ jobs:
       with:
         name: DateConverter-APK
         path: bin/*.apk
-        
