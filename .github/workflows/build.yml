@@ -13,14 +13,27 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
     - name: Install System Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev
         pip install --upgrade buildozer cython
 
-    - name: Build APK
+    - name: Accept Android Licenses & Build APK
       run: |
+        # إنشاء مجلدات SDK مسبقاً وقبول التراخيص تلقائياً
+        mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin
+        yes | buildozer --warn_on_root=0 android debug || true
+        # قبول أي تراخيص جديدة تم تنزيلها بواسطة sdkmanager
+        if [ -d "$HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin" ]; then
+          yes | $HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        fi
+        # تشغيل البناء الفعلي بعد قبول التراخيص
         buildozer --warn_on_root=0 android debug
 
     - name: Upload APK Artifact
