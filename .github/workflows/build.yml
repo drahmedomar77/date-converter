@@ -21,28 +21,26 @@ jobs:
     - name: Install System Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev expect
+        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev
         pip install --upgrade buildozer cython
 
-    - name: Build APK with Auto License Acceptance
+    - name: Pre-accept Android SDK Licenses & Build APK
       run: |
-        rm -rf ~/.buildozer
-        expect -c '
-          set timeout -1
-          spawn buildozer --warn_on_root=0 android debug
-          expect {
-            "Accept? (y/N):" { send "y\r"; exp_continue }
-            "y/N" { send "y\r"; exp_continue }
-            eof
-          }
-        '
+        # إنشاء مجلد التراخيص لـ Buildozer ونقل التراخيص المقبولة جاهزاً من خادم GitHub
+        mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
+        if [ -d "$ANDROID_HOME/licenses" ]; then
+          cp -r $ANDROID_HOME/licenses/* ~/.buildozer/android/platform/android-sdk/licenses/
+        fi
+
+        # قبول كلي إضافي للتراخيص عبر sdkmanager
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+        # تشغيل البناء الفعلي مع إظهار تفاصيل السجل
+        buildozer -v android debug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: DateConverter-APK
-        path: |
-          bin/*.apk
-          .buildozer/android/platform/build-*/build/outputs/apk/*/*/*.apk
-        if-no-files-found: error
+        path: bin/*.apk
         
