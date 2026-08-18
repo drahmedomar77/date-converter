@@ -28,14 +28,21 @@ jobs:
       run: |
         python3 -c "
         import re
+
         with open('buildozer.spec', 'r') as f:
             content = f.read()
 
-        # تفعيل قبول التراخيص التلقائي رسمياً في buildozer
-        if 'android.accept_sdk_license' in content:
-            content = re.sub(r'#?\s*android\.accept_sdk_license\s*=.*', 'android.accept_sdk_license = True', content)
-        else:
-            content += '\nandroid.accept_sdk_license = True\n'
+        def set_config(key, val, text):
+            pattern = r'#?\s*' + re.escape(key) + r'\s*=.*'
+            if re.search(pattern, text):
+                return re.sub(pattern, f'{key} = {val}', text)
+            else:
+                return text + f'\n{key} = {val}\n'
+
+        # تثبيت إعدادات التراخيص والإصدارات المستقرة 34.0.0
+        content = set_config('android.accept_sdk_license', 'True', content)
+        content = set_config('android.api', '33', content)
+        content = set_config('android.build_tools_version', '34.0.0', content)
 
         with open('buildozer.spec', 'w') as f:
             f.write(content)
