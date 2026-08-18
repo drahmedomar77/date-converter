@@ -24,32 +24,26 @@ jobs:
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev
         pip install --upgrade buildozer cython
 
-    - name: Configure buildozer.spec and Licenses
+    - name: Configure buildozer.spec
       run: |
-        # 1. قبول تراخيص Android SDK بالكامل
-        mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-        if [ -d "$ANDROID_HOME/licenses" ]; then
-          cp -r $ANDROID_HOME/licenses/* ~/.buildozer/android/platform/android-sdk/licenses/
-        fi
-
-        # 2. ضبط buildozer.spec لاستخدام إصدار مستقر 34.0.0 وتفعيل قبول التراخيص
         python3 -c "
         import re
         with open('buildozer.spec', 'r') as f:
             content = f.read()
 
-        content = re.sub(r'#?\s*android\.accept_sdk_license\s*=.*', 'android.accept_sdk_license = True', content)
-        content = re.sub(r'#?\s*android\.build_tools_version\s*=.*', 'android.build_tools_version = 34.0.0', content)
-        content = re.sub(r'#?\s*android\.api\s*=.*', 'android.api = 33', content)
+        # تفعيل قبول التراخيص التلقائي رسمياً في buildozer
+        if 'android.accept_sdk_license' in content:
+            content = re.sub(r'#?\s*android\.accept_sdk_license\s*=.*', 'android.accept_sdk_license = True', content)
+        else:
+            content += '\nandroid.accept_sdk_license = True\n'
 
         with open('buildozer.spec', 'w') as f:
             f.write(content)
         "
 
-    - name: Build APK
+    - name: Build APK with Buildozer
       run: |
-        buildozer -v android debug
+        yes | buildozer -v android debug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
