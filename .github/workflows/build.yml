@@ -21,20 +21,21 @@ jobs:
     - name: Install System Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev
+        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev expect
         pip install --upgrade buildozer cython
 
-    - name: Accept Android Licenses & Build APK
+    - name: Build APK with Auto License Acceptance
       run: |
-        # إنشاء مجلدات SDK مسبقاً وقبول التراخيص تلقائياً
-        mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin
-        yes | buildozer --warn_on_root=0 android debug || true
-        # قبول أي تراخيص جديدة تم تنزيلها بواسطة sdkmanager
-        if [ -d "$HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin" ]; then
-          yes | $HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
-        fi
-        # تشغيل البناء الفعلي بعد قبول التراخيص
-        buildozer --warn_on_root=0 android debug
+        rm -rf ~/.buildozer
+        expect -c '
+          set timeout -1
+          spawn buildozer --warn_on_root=0 android debug
+          expect {
+            "Accept? (y/N):" { send "y\r"; exp_continue }
+            "y/N" { send "y\r"; exp_continue }
+            eof
+          }
+        '
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
