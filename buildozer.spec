@@ -1,3 +1,4 @@
+
 [app]
 title = DateConverter
 package.name = dateconverter
@@ -18,4 +19,5 @@ accept_sdk_license = True
 api = 33
 minapi = 24
 ndk = 25b
+build_tools_version = 33.0.2
 p4a.branch = master
