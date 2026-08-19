@@ -24,6 +24,14 @@ jobs:
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev
         pip install --upgrade buildozer "cython<3.0.0"
 
+    - name: Accept Android SDK Licenses Pre-emptively
+      run: |
+        mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
+        # قبول جميع تراخيص Android SDK أوتوماتيكياً
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME --licenses || true
+        # نسخ التراخيص المقبولة إلى مجلد buildozer
+        cp -r $ANDROID_HOME/licenses ~/.buildozer/android/platform/android-sdk/ || true
+
     - name: Configure buildozer.spec
       run: |
         python3 -c "
@@ -39,12 +47,10 @@ jobs:
             else:
                 return text + f'\n{key} = {val}\n'
 
-        # تثبيت الإصدارات المتوافقة والمستقرة مع Kivy
         content = set_config('android.accept_sdk_license', 'True', content)
         content = set_config('android.api', '33', content)
         content = set_config('android.minapi', '24', content)
         content = set_config('android.ndk', '25b', content)
-        content = set_config('android.build_tools_version', '34.0.0', content)
 
         with open('buildozer.spec', 'w') as f:
             f.write(content)
