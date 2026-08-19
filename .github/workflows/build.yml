@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # التغيير إلى ubuntu-22.04 لتفادي مشاكل Ubuntu 24.04
 
     steps:
     - name: Checkout Code
@@ -24,24 +24,6 @@ jobs:
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev
         pip install --upgrade buildozer "cython<3.0.0"
 
-    - name: Setup Android SDK Tools and Licenses
-      run: |
-        SDK_DIR="$HOME/.buildozer/android/platform/android-sdk"
-        mkdir -p "$SDK_DIR/cmdline-tools"
-
-        # تحميل وتفكيك commandlinetools الرسمية
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline.zip
-        unzip -q cmdline.zip -d "$SDK_DIR/cmdline-tools"
-        mv "$SDK_DIR/cmdline-tools/cmdline-tools" "$SDK_DIR/cmdline-tools/latest"
-        rm cmdline.zip
-
-        # ربط المسار القديم بالجديد لحل مشكلة sdkmanager path does not exist
-        mkdir -p "$SDK_DIR/tools/bin"
-        ln -sf "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" "$SDK_DIR/tools/bin/sdkmanager"
-
-        # قبول التراخيص أوتوماتيكياً
-        yes | "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_DIR" --licenses || true
-
     - name: Configure buildozer.spec
       run: |
         python3 -c "
@@ -57,9 +39,11 @@ jobs:
             else:
                 return text + f'\n{key} = {val}\n'
 
+        content = set_config('log_level', '2', content)
         content = set_config('android.accept_sdk_license', 'True', content)
         content = set_config('android.api', '33', content)
         content = set_config('android.minapi', '24', content)
+        content = set_config('android.ndk_version', '25b', content)
         content = set_config('android.ndk', '25b', content)
         content = set_config('android.build_tools_version', '34.0.0', content)
 
